@@ -1,1 +1,0 @@
-# otorihiki-note
