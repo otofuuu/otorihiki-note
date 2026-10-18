@@ -7,7 +7,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 
 const post=["DM確認中","内容確定","発送待ち","発送済み","到着確認","完了"];
 const meet=["DM確認中","内容確定","受け渡し待ち","完了"];
-const fields=["id","type","delivery","status","name","xid","items","myShip","theirShip","shipping","tracking","meetAt","meetPlace","price","postage","paid","addressExchanged","memo"];
+const fields=["id","type","delivery","status","name","xid","items","myShip","theirShip","shipping","tracking","meetDate","meetTime","meetPlace","price","postage","paid","addressExchanged","memo"];
 
 let archiveView=false;
 let reorderMode=false;
@@ -61,7 +61,8 @@ function normalizeData(raw){
       theirShip:safeString(x.theirShip,32),
       shipping:safeString(x.shipping,120),
       tracking:safeString(x.tracking,200),
-      meetAt:safeString(x.meetAt,40),
+      meetDate:safeString(x.meetDate || (x.meetAt ? String(x.meetAt).slice(0,10) : ""),32),
+      meetTime:safeString(x.meetTime || (x.meetAt && String(x.meetAt).includes("T") ? String(x.meetAt).split("T")[1].slice(0,5) : ""),16),
       meetPlace:safeString(x.meetPlace,240),
       price:safeString(x.price,40),
       postage:safeString(x.postage,40),
@@ -104,7 +105,6 @@ function readStoredArray(){
 }
 
 let data=normalizeData(readStoredArray());
-localStorage.setItem(KEY,JSON.stringify(data));
 
 function ss(){return $("delivery").value==="手渡し"?meet:post}
 function xUser(v){
@@ -141,7 +141,11 @@ function toggle(){
 }
 function saveData(){
   localStorage.setItem(KEY,JSON.stringify(data));
-  render();
+  try{render();}catch(err){
+  console.error(err);
+  const cards=$("cards");
+  if(cards) cards.innerHTML='<div class="card">表示処理でエラーが発生しました。データはブラウザ内に残っている可能性があります。</div>';
+}
 }
 function render(){
   const live=data.filter(x=>!x.archived);
@@ -168,7 +172,7 @@ function render(){
   const f=$("filter").value;
   const base=q?data:data.filter(x=>archiveView?x.archived:!x.archived);
   let rows=base.filter(x=>{
-    const hit=!q||[x.name,x.xid,x.items,x.memo,x.type,x.status,x.meetPlace,x.shipping].join(" ").toLowerCase().includes(q);
+    const hit=!q||[x.name,x.xid,x.items,x.memo,x.type,x.status,x.meetPlace,x.meetDate,x.meetTime,x.shipping].join(" ").toLowerCase().includes(q);
     if(!hit)return false;
     if(q)return true;
     return archiveView||f==="all"||(f==="done"?x.status==="完了":x.status!=="完了");
@@ -179,7 +183,9 @@ function render(){
     const d=x.delivery||"郵送";
     const list=d==="手渡し"?meet:post;
     const details=d==="手渡し"
-      ? `${x.meetAt?dateMeta("日時",x.meetAt,x.status,"meet"):`<span class="unset">日時 未設定</span>`}${x.meetPlace?`<span>場所 ${esc(x.meetPlace)}</span>`:""}`
+      ? `${x.meetDate
+          ? `${dateMeta("手渡し日",x.meetDate,x.status,"meet")}${x.meetTime?`<span>時間 ${esc(x.meetTime)}</span>`:`<span class="unset">時間 未定</span>`}`
+          : `<span class="unset">手渡し日 未設定</span>`}${x.meetPlace?`<span>場所 ${esc(x.meetPlace)}</span>`:""}`
       : `${x.myShip?dateMeta("自分発送",x.myShip,x.status,"myShip"):`<span class="unset">自分発送 未設定</span>`}${x.theirShip?dateMeta("相手発送",x.theirShip,x.status,"theirShip"):`<span class="unset">相手発送 未設定</span>`}`;
 
     const idAttr=esc(x.id);
@@ -293,6 +299,50 @@ function dateMeta(label,raw,status,kind="generic"){
   }
   return `<span${cls?` class="${cls}"`:""}>${esc(label)} ${esc(raw)}${note?`<span class="date-note">${note}</span>`:""}</span>`;
 }
+
+function normalizeMeetTimeValue(value){
+  const raw=String(value||"").trim();
+  if(!raw)return "";
+
+  let h,m;
+
+  if(/^\d{1,2}:\d{1,2}$/.test(raw)){
+    [h,m]=raw.split(":").map(Number);
+  }else if(/^\d{1,2}$/.test(raw)){
+    h=Number(raw);
+    m=0;
+  }else if(/^\d{3}$/.test(raw)){
+    h=Number(raw.slice(0,1));
+    m=Number(raw.slice(1));
+  }else if(/^\d{4}$/.test(raw)){
+    h=Number(raw.slice(0,2));
+    m=Number(raw.slice(2));
+  }else{
+    return null;
+  }
+
+  if(!Number.isInteger(h)||!Number.isInteger(m)||h<0||h>23||m<0||m>59){
+    return null;
+  }
+
+  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+}
+
+function formatMeetTimeInput(){
+  const el=$("meetTime");
+  if(!el)return true;
+
+  const formatted=normalizeMeetTimeValue(el.value);
+  if(formatted===null){
+    alert("手渡し時間は「1400」「930」「14」「14:30」などで入力してください。");
+    el.focus();
+    return false;
+  }
+
+  el.value=formatted;
+  return true;
+}
+
 function fresh(){
   document.querySelector("form").reset();
   $("id").value="";
@@ -335,13 +385,19 @@ $("closeHelp").onclick=()=>$("helpDlg").close();
 $("new").onclick=fresh;
 $("delivery").onchange=toggle;
 $("type").onchange=toggle;
+$("meetTime").addEventListener("blur",formatMeetTimeInput);
 document.querySelectorAll(".ship-chip").forEach(btn=>{
   btn.onclick=()=>{$("shipping").value=btn.dataset.ship||""};
 });
 
 $("save").onclick=()=>{
+  if(!formatMeetTimeInput())return;
   const o={};
-  fields.forEach(k=>o[k]=$(k).type==="checkbox"?$(k).checked:$(k).value.trim());
+  fields.forEach(k=>{
+    const el=$(k);
+    if(!el){ o[k]=""; return; }
+    o[k]=el.type==="checkbox"?el.checked:el.value.trim();
+  });
 
   const now=new Date().toISOString();
   const i=data.findIndex(x=>x.id===o.id);
@@ -458,4 +514,10 @@ $("import").onchange=async e=>{
   e.target.value="";
 };
 
-render();
+try{
+  render();
+}catch(err){
+  console.error(err);
+  const cards=$("cards");
+  if(cards)cards.innerHTML='<div class="card">表示処理でエラーが発生しました。データはブラウザ内に残っている可能性があります。</div>';
+}
