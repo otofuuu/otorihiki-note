@@ -10,11 +10,11 @@
     「新しい取引」から登録し、進行に合わせて一覧のステータスを変更します。完了した取引はArchiveへ移動できます。必要に応じて並び替えや検索も利用できます。</p>
     <p><strong>データについて</strong><br>
     登録データはこのブラウザ内に保存されます。制作者側のサーバーには送信されません。ブラウザのサイトデータを削除すると消える場合があるため、必要に応じて「書き出し」でバックアップしてください。</p>
-    <p><strong>詳しい使い方</strong><br>
+    <p><strong>詳しい使い方</strong>　
     <a href="./README.html" target="_blank" rel="noopener noreferrer">READMEを見る</a></p>
     <p><strong>不具合・お問い合わせ</strong><br>
-    X：<a href="https://x.com/uznim05" target="_blank" rel="noopener noreferrer">@uznim05</a> / 
-    X：<a href="https://x.com/s_renge" target="_blank" rel="noopener noreferrer">@s_renge</a></p>
+    X：<a href="https://x.com/uznim05" target="_blank" rel="noopener noreferrer">@uznim05</a>　／　
+    <a href="https://x.com/s_renge" target="_blank" rel="noopener noreferrer">@s_renge</a></p>
   </div>
 </dialog>
 <dialog id="dlg"><form method="dialog"><div class="dialog-head"><div><h2 id="title">新しい取引</h2><div id="registeredAt" class="registered-at hide"></div></div><button type="button" id="closeDlg" class="closebtn" aria-label="閉じる">×</button></div><input id="id" type="hidden"><div class="grid"><label>取引種別<select id="type"><option>交換</option><option>譲渡</option><option>買取</option></select></label><label>受け渡し<select id="delivery"><option>郵送</option><option>手渡し</option></select></label><label>ステータス<select id="status"></select></label><label>相手の表示名<input id="name"></label><label>X ID<input id="xid" placeholder="@example"></label></div><label>取引内容<textarea id="items" rows="3"></textarea></label><div id="postal" class="grid"><label>自分の発送日<span class="date-wrap"><input id="myShip" type="date"></span></label><label>相手の発送日<span class="date-wrap"><input id="theirShip" type="date"></span></label><label>発送方法
