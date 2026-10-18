@@ -1,11 +1,16 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>お取引ノート</title><link rel="icon" type="image/png" href="./favicon.png"><link rel="icon" href="./favicon.ico"><link rel="apple-touch-icon" href="./apple-touch-icon.png"><link rel="stylesheet" href="styles.css?v=099"></head><body><header><div class="title-block"><div class="title-row"><h1>お取引ノート</h1><button id="helpBtn" type="button" class="help-link">使い方</button></div><small>交換・譲渡・買取を、ひとまとめに。</small></div><button id="new">＋ 新しい取引</button></header><main><div class="summary-row"><div id="stats"></div><button id="reorderBtn" type="button">並び替え</button></div><div class="tools"><input id="q" placeholder="相手・内容・メモを検索"><select id="filter"><option value="active">進行中</option><option value="done">完了</option><option value="all">すべて</option></select><button id="bulkArchive" type="button" class="hide">完了分をArchive</button><button id="archives">Archive</button></div><div id="cards"></div></main>
+<!doctype html><html lang="ja">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>オトリヒキノート</title>
+<link rel="icon" type="image/png" href="./favicon.png"><link rel="icon" href="./favicon.ico"><link rel="apple-touch-icon" href="./apple-touch-icon.png"><link rel="stylesheet" href="styles.css?v=099"></head>
+<body><header><div class="title-block"><div class="title-row"><h1>オトリヒキノート</h1>
+<button id="helpBtn" type="button" class="help-link">使い方</button></div><small>交換・譲渡・買取を、ひとまとめに。</small></div><button id="new">＋ 新しい取引</button></header><main><div class="summary-row"><div id="stats"></div><button id="reorderBtn" type="button">並び替え</button></div><div class="tools"><input id="q" placeholder="相手・内容・メモを検索"><select id="filter"><option value="active">進行中</option><option value="done">完了</option><option value="all">すべて</option></select><button id="bulkArchive" type="button" class="hide">完了分をArchive</button><button id="archives">Archive</button></div><div id="cards"></div></main>
 <dialog id="helpDlg" class="help-dialog">
   <div class="dialog-head">
     <h2>使い方・ヘルプ</h2>
     <button type="button" id="closeHelp" class="closebtn" aria-label="閉じる">×</button>
   </div>
   <div class="help-body">
-    <p><strong>お取引ノート</strong>は、X（Twitter）などでのグッズ交換・譲渡・買取を管理するためのWebアプリです。</p>
+    <p><strong>オトリヒキノート</strong>は、X（Twitter）などでのグッズ交換・譲渡・買取を管理するためのWebアプリです。</p>
     <p><strong>基本の使い方</strong><br>
     「新しい取引」から登録し、進行に合わせて一覧のステータスを変更します。完了した取引はArchiveへ移動できます。必要に応じて並び替えや検索も利用できます。</p>
     <p><strong>データについて</strong><br>
