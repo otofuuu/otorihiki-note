@@ -7,10 +7,12 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 
 const post=["DM確認中","内容確定","発送待ち","発送済み","到着確認","完了"];
 const meet=["DM確認中","内容確定","受け渡し待ち","完了"];
-const fields=["id","type","delivery","status","name","xid","items","myShip","theirShip","shipping","tracking","meetDate","meetTime","meetPlace","price","postage","paid","addressExchanged","memo"];
+const fields=["id","type","delivery","status","name","xid","items","myShip","theirShip","shipping","tracking","meetDate","meetTime","meetPlace","price","postage","paid","addressExchanged","longTerm","longYear","longMonth","longPeriod","memo"];
 
 let archiveView=false;
 let reorderMode=false;
+let eventView=false;
+let longView=false;
 
 function safeString(v,max=10000){
   return String(v??"").slice(0,max);
@@ -19,10 +21,24 @@ function validIso(v){
   const s=safeString(v,64);
   return s && !Number.isNaN(Date.parse(s)) ? s : "";
 }
+function newId(){
+  if(globalThis.crypto?.randomUUID){
+    return crypto.randomUUID();
+  }
+  if(globalThis.crypto?.getRandomValues){
+    const bytes=new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6]=(bytes[6]&0x0f)|0x40;
+    bytes[8]=(bytes[8]&0x3f)|0x80;
+    const hex=[...bytes].map(b=>b.toString(16).padStart(2,"0")).join("");
+    return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+  }
+  return `id_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,12)}`;
+}
 function makeId(raw,used){
   let id=safeString(raw,120).trim();
   if(!/^[A-Za-z0-9_-]{1,120}$/.test(id) || used.has(id)){
-    do{id=crypto.randomUUID()}while(used.has(id));
+    do{id=newId()}while(used.has(id));
   }
   used.add(id);
   return id;
@@ -41,13 +57,14 @@ function normalizeStatus(status,delivery){
 function normalizeData(raw){
   if(!Array.isArray(raw))return [];
   const usedIds=new Set();
-  const now=Date.now();
-
   const normalized=raw.filter(v=>v&&typeof v==="object"&&!Array.isArray(v)).map((x,i)=>{
     const delivery=x.delivery==="手渡し"?"手渡し":"郵送";
-    const createdAt=validIso(x.createdAt)||validIso(x.updated)||new Date(now-i*1000).toISOString();
+    const createdAt=validIso(x.createdAt)||validIso(x.updated)||"";
     const updated=validIso(x.updated)||createdAt;
-    const order=Number.isFinite(Number(x.order))?Number(x.order):null;
+    const rawOrder=x.order;
+    const order=rawOrder===null||rawOrder===undefined||String(rawOrder).trim()===""
+      ? null
+      : (Number.isFinite(Number(rawOrder))?Number(rawOrder):null);
 
     return {
       id:makeId(x.id,usedIds),
@@ -68,6 +85,10 @@ function normalizeData(raw){
       postage:safeString(x.postage,40),
       paid:!!x.paid,
       addressExchanged:!!x.addressExchanged,
+      longTerm:!!x.longTerm,
+      longYear:safeString(x.longYear,4),
+      longMonth:safeString(x.longMonth,2),
+      longPeriod:safeString(x.longPeriod,8),
       memo:safeString(x.memo,20000),
       archived:!!x.archived,
       createdAt,
@@ -108,7 +129,11 @@ let data=normalizeData(readStoredArray());
 
 function ss(){return $("delivery").value==="手渡し"?meet:post}
 function xUser(v){
-  return String(v??"").trim().replace(/^@+/,"").replace(/^https?:\/\/(?:www\.)?(?:twitter\.com|x\.com)\//i,"").split(/[/?#]/)[0];
+  const normalized=String(v??"").normalize("NFKC").trim()
+    .replace(/^@+/,"")
+    .replace(/^(?:https?:\/\/)?(?:www\.|mobile\.)?(?:twitter\.com|x\.com)\//i,"");
+  const first=normalized.split(/[\/?#\s]/)[0];
+  return first.match(/^[A-Za-z0-9_]{1,15}/)?.[0]||"";
 }
 function xLink(v){
   const u=xUser(v);
@@ -140,55 +165,143 @@ function toggle(){
   statusOptions(true);
 }
 function saveData(){
-  localStorage.setItem(KEY,JSON.stringify(data));
-  try{render();}catch(err){
-  console.error(err);
-  const cards=$("cards");
-  if(cards) cards.innerHTML='<div class="card">表示処理でエラーが発生しました。データはブラウザ内に残っている可能性があります。</div>';
-}
+  try{
+    localStorage.setItem(KEY,JSON.stringify(data));
+  }catch(err){
+    console.error(err);
+    alert("保存できませんでした。ブラウザの保存容量などを確認し、必要なら「書き出し」でデータを退避してください。");
+    return false;
+  }
+  try{
+    render();
+  }catch(err){
+    console.error(err);
+    const cards=$("cards");
+    if(cards)cards.innerHTML='<div class="card">表示処理でエラーが発生しました。データはブラウザ内に残っている可能性があります。</div>';
+  }
+  return true;
 }
 function render(){
   const live=data.filter(x=>!x.archived);
   const active=live.filter(x=>x.status!=="完了").length;
   const done=live.filter(x=>x.status==="完了").length;
+  const handLive=live.filter(x=>x.delivery==="手渡し");
+  const handOpen=handLive.filter(x=>x.status!=="完了").length;
+  const handDone=handLive.filter(x=>x.status==="完了").length;
+  const longLive=live.filter(x=>x.longTerm);
+  const longOpen=longLive.filter(x=>x.status!=="完了").length;
+  const longDone=longLive.filter(x=>x.status==="完了").length;
 
   $("stats").innerHTML=archiveView
     ? `<span class="stat"><b>${data.filter(x=>x.archived).length}</b>Archive</span>`
-    : `<span class="stat"><b>${active}</b>進行中</span><span class="stat"><b>${done}</b>完了</span>`;
+    : eventView
+      ? `<span class="stat"><b>${handOpen}</b>未受け渡し</span><span class="stat"><b>${handDone}</b>済み</span>`
+      : longView
+        ? `<span class="stat"><b>${longOpen}</b>進行中</span><span class="stat"><b>${longDone}</b>完了</span>`
+        : `<span class="stat"><b>${active}</b>進行中</span><span class="stat"><b>${done}</b>完了</span>`;
+
+  $("eventModeBtn").textContent="🎪";
+  $("eventModeBtn").classList.toggle("active",eventView);
+  $("eventModeBtn").setAttribute("aria-pressed",String(eventView));
+  $("eventModeBtn").title=eventView?"通常表示に戻る":"イベント表示";
+  $("eventHint").classList.toggle("hide",!eventView);
+  $("longModeBtn").textContent="⏳";
+  $("longModeBtn").classList.toggle("active",longView);
+  $("longModeBtn").setAttribute("aria-pressed",String(longView));
+  $("longModeBtn").title=longView?"通常表示に戻る":"長期表示";
+  $("longHint").classList.toggle("hide",!longView);
 
   $("archives").textContent=archiveView?"← 戻る":"Archive";
+  $("archives").classList.toggle("hide",eventView||longView);
   $("filter").classList.toggle("hide",archiveView);
-  $("reorderBtn").classList.toggle("hide",archiveView||!!$("q").value);
+  $("reorderBtn").classList.toggle("hide",archiveView||eventView||longView||!!$("q").value);
+
+  // The same filter is reused in event mode, but the labels become event-friendly.
+  const filter=$("filter");
+  if(eventView){
+    filter.options[0].textContent="未受け渡し";
+    filter.options[1].textContent="済み";
+  }else{
+    filter.options[0].textContent="進行中";
+    filter.options[1].textContent="完了";
+  }
 
   const completedCount=data.filter(x=>!x.archived&&x.status==="完了").length;
-  const canBulkArchive=!archiveView&&!$("q").value&&completedCount>0&&["done","all"].includes($("filter").value);
+  const canBulkArchive=!eventView&&!longView&&!archiveView&&!$("q").value&&completedCount>0&&["done","all"].includes(filter.value);
   $("bulkArchive").classList.toggle("hide",!canBulkArchive);
   $("bulkArchive").textContent=`完了分をArchive (${completedCount})`;
 
   $("reorderBtn").textContent=reorderMode?"完了":"並び替え";
   document.body.classList.toggle("reorder-mode",reorderMode);
+  document.body.classList.toggle("event-mode",eventView);
+  document.body.classList.toggle("long-mode",longView);
 
   const q=$("q").value.toLowerCase();
-  const f=$("filter").value;
-  const base=q?data:data.filter(x=>archiveView?x.archived:!x.archived);
+  const f=filter.value;
+
+  let base;
+  if(eventView){
+    base=data.filter(x=>!x.archived&&x.delivery==="手渡し");
+  }else if(longView){
+    base=data.filter(x=>!x.archived&&x.longTerm);
+  }else{
+    base=archiveView
+      ? data.filter(x=>x.archived)
+      : (q?data:data.filter(x=>!x.archived));
+  }
+
   let rows=base.filter(x=>{
-    const hit=!q||[x.name,x.xid,x.items,x.memo,x.type,x.status,x.meetPlace,x.meetDate,x.meetTime,x.shipping].join(" ").toLowerCase().includes(q);
+    const hit=!q||[x.name,x.xid,x.items,x.memo,x.type,x.status,x.meetPlace,x.meetDate,x.meetTime,x.shipping]
+      .join(" ")
+      .toLowerCase()
+      .includes(q);
+
     if(!hit)return false;
-    if(q)return true;
-    return archiveView||f==="all"||(f==="done"?x.status==="完了":x.status!=="完了");
+    if(q&&!eventView&&!longView)return true;
+    if(archiveView)return true;
+
+    return f==="all"||(f==="done"?x.status==="完了":x.status!=="完了");
   });
   rows=orderedRows(rows);
+  if(!eventView&&!longView&&!archiveView&&!q){
+    rows.sort((a,b)=>(Number(a.longTerm)-Number(b.longTerm))||(a.order-b.order));
+  }
 
   $("cards").innerHTML=rows.length?rows.map(x=>{
     const d=x.delivery||"郵送";
-    const list=d==="手渡し"?meet:post;
-    const details=d==="手渡し"
-      ? `${x.meetDate
-          ? `${dateMeta("手渡し日",x.meetDate,x.status,"meet")}${x.meetTime?`<span>時間 ${esc(x.meetTime)}</span>`:`<span class="unset">時間 未定</span>`}`
-          : `<span class="unset">手渡し日 未設定</span>`}${x.meetPlace?`<span>場所 ${esc(x.meetPlace)}</span>`:""}`
-      : `${x.myShip?dateMeta("自分発送",x.myShip,x.status,"myShip"):`<span class="unset">自分発送 未設定</span>`}${x.theirShip?dateMeta("相手発送",x.theirShip,x.status,"theirShip"):`<span class="unset">相手発送 未設定</span>`}`;
-
     const idAttr=esc(x.id);
+
+    if(eventView){
+      const handDetails=[
+        x.meetDate?`<span class="event-date">${esc(x.meetDate)}</span>`:`<span class="unset">日付未設定</span>`,
+        x.meetTime?`<span>${esc(x.meetTime)}</span>`:`<span class="unset">時間未定</span>`,
+        x.meetPlace?`<span>${esc(x.meetPlace)}</span>`:""
+      ].join("");
+
+      return `<article class="card event-card ${x.status==="完了"?"event-card-done":""}" data-id="${idAttr}">
+        <div class="event-main">
+          <div class="event-person">
+            <div class="event-name">${esc(x.name||x.xid||"相手未入力")}</div>
+            ${x.xid?`<div class="event-x">${xLink(x.xid)}</div>`:""}
+          </div>
+          ${x.status==="完了"
+            ? `<span class="event-done-label">✓ 済み</span>`
+            : `<button type="button" class="event-done-btn" data-id="${idAttr}">受け渡し済み</button>`}
+        </div>
+        <div class="event-meta">${handDetails}</div>
+        <p>${esc(x.items||"取引内容未入力")}</p>
+      </article>`;
+    }
+
+    const list=d==="手渡し"?meet:post;
+    const details=x.longTerm
+      ? `<span class="long-schedule-label">${longScheduleText(x)}</span>`
+      : d==="手渡し"
+        ? `${x.meetDate
+            ? `${dateMeta("手渡し日",x.meetDate,x.status,"meet")}${x.meetTime?`<span>時間 ${esc(x.meetTime)}</span>`:`<span class="unset">時間 未定</span>`}`
+            : `<span class="unset">手渡し日 未設定</span>`}${x.meetPlace?`<span>場所 ${esc(x.meetPlace)}</span>`:""}`
+        : `${x.myShip?dateMeta("自分発送",x.myShip,x.status,"myShip"):`<span class="unset">自分発送 未設定</span>`}${x.theirShip?dateMeta("相手発送",x.theirShip,x.status,"theirShip"):`<span class="unset">相手発送 未設定</span>`}`;
+
     return `<article class="card" data-id="${idAttr}">
       <div class="top">
         <div>
@@ -196,6 +309,7 @@ function render(){
           <span class="badge">${d==="手渡し"?"🤝 手渡し":"📮 郵送"}</span>
           ${d==="郵送"&&x.addressExchanged?`<span class="status-mini" title="住所交換済">🏠</span>`:""}
           ${x.type!=="交換"&&x.paid?`<span class="status-mini" title="支払い済">💰</span>`:""}
+          ${x.longTerm?`<span class="long-icon" title="長期のお取引" aria-label="長期のお取引">⏳</span>`:""}
         </div>
         ${x.archived
           ? '<span class="badge">Archive</span>'
@@ -207,14 +321,21 @@ function render(){
       <p>${esc(x.items||"取引内容未入力")}</p>
       <div class="meta">${x.xid?`<span>${xLink(x.xid)}</span>`:""}${details}</div>
     </article>`;
-  }).join("") : '<div class="card">該当する取引はありません。</div>';
+  }).join("") : `<div class="card">${eventView?"手渡しの取引はありません。":"該当する取引はありません。"}</div>`;
 
   document.querySelectorAll(".card[data-id]").forEach(c=>{
     c.onclick=e=>{
-      if(reorderMode||e.target.closest(".quick")||e.target.closest(".x-link")||e.target.closest(".move-buttons"))return;
+      if(
+        reorderMode||
+        e.target.closest(".quick")||
+        e.target.closest(".x-link")||
+        e.target.closest(".move-buttons")||
+        e.target.closest(".event-done-btn")
+      )return;
       edit(c.dataset.id);
     };
   });
+
   document.querySelectorAll(".quick").forEach(s=>{
     s.onchange=e=>{
       e.stopPropagation();
@@ -225,6 +346,19 @@ function render(){
       saveData();
     };
   });
+
+  document.querySelectorAll(".event-done-btn").forEach(btn=>{
+    btn.onclick=e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      const x=data.find(v=>v.id===btn.dataset.id);
+      if(!x)return;
+      x.status="完了";
+      x.updated=new Date().toISOString();
+      saveData();
+    };
+  });
+
   if(reorderMode)initMoveButtons();
 }
 
@@ -237,8 +371,17 @@ function saveVisibleOrder(){
   // Reuse only the slots these visible items already occupied.
   // Hidden items keep their order, so filtering cannot create duplicate order values.
   const slots=items.map(x=>x.order).sort((a,b)=>a-b);
+  const previous=items.map(x=>x.order);
   items.forEach((x,i)=>x.order=slots[i]);
-  localStorage.setItem(KEY,JSON.stringify(data));
+  try{
+    localStorage.setItem(KEY,JSON.stringify(data));
+    return true;
+  }catch(err){
+    items.forEach((x,i)=>x.order=previous[i]);
+    console.error(err);
+    alert("並び順を保存できませんでした。ブラウザの保存容量などを確認してください。");
+    return false;
+  }
 }
 function moveOne(id,dir){
   const rows=[...document.querySelectorAll("#cards .card[data-id]")];
@@ -246,22 +389,27 @@ function moveOne(id,dir){
   const target=current+dir;
   if(current<0||target<0||target>=rows.length)return;
   const card=rows[current],other=rows[target];
+  const item=data.find(x=>x.id===card.dataset.id);
+  const otherItem=data.find(x=>x.id===other.dataset.id);
+  if(item&&otherItem&&!!item.longTerm!==!!otherItem.longTerm)return;
   if(dir<0)other.parentNode.insertBefore(card,other);
   else other.parentNode.insertBefore(other,card);
-  saveVisibleOrder();
-  render();
+  if(saveVisibleOrder())render();
 }
 function initMoveButtons(){
   const cards=[...document.querySelectorAll("#cards .card[data-id]")];
   cards.forEach((card,i)=>{
+    const item=data.find(x=>x.id===card.dataset.id);
+    const prev=i>0?data.find(x=>x.id===cards[i-1].dataset.id):null;
+    const next=i<cards.length-1?data.find(x=>x.id===cards[i+1].dataset.id):null;
     const up=card.querySelector(".move-up");
     const down=card.querySelector(".move-down");
     if(up){
-      up.disabled=i===0;
+      up.disabled=i===0 || !!item?.longTerm!==!!prev?.longTerm;
       up.onclick=e=>{e.preventDefault();e.stopPropagation();moveOne(card.dataset.id,-1)};
     }
     if(down){
-      down.disabled=i===cards.length-1;
+      down.disabled=i===cards.length-1 || !!item?.longTerm!==!!next?.longTerm;
       down.onclick=e=>{e.preventDefault();e.stopPropagation();moveOne(card.dataset.id,1)};
     }
   });
@@ -301,7 +449,7 @@ function dateMeta(label,raw,status,kind="generic"){
 }
 
 function normalizeMeetTimeValue(value){
-  const raw=String(value||"").trim();
+  const raw=String(value||"").normalize("NFKC").trim();
   if(!raw)return "";
 
   let h,m;
@@ -328,38 +476,65 @@ function normalizeMeetTimeValue(value){
   return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
 }
 
-function formatMeetTimeInput(){
+function setMeetTimeError(message=""){
+  const el=$("meetTime");
+  const error=$("meetTimeError");
+  if(error){
+    error.textContent=message;
+    error.classList.toggle("hide",!message);
+  }
+  if(el)el.setAttribute("aria-invalid",message?"true":"false");
+}
+function formatMeetTimeInput(focusOnError=false){
   const el=$("meetTime");
   if(!el)return true;
 
   const formatted=normalizeMeetTimeValue(el.value);
   if(formatted===null){
-    alert("手渡し時間は「1400」「930」「14」「14:30」などで入力してください。");
-    el.focus();
+    setMeetTimeError("「1400」「930」「14」「14:30」などで入力してください。");
+    if(focusOnError)el.focus();
     return false;
   }
 
   el.value=formatted;
+  setMeetTimeError("");
   return true;
 }
 
+
+function syncLongScheduleUI(){
+  const on=$("longTerm").checked;
+  $("longSchedule").classList.toggle("hide",!on);
+}
+
+function longScheduleText(x){
+  if(!x.longTerm)return "";
+  const year=x.longYear?`${esc(x.longYear)}年`:"";
+  const month=x.longMonth?`${esc(x.longMonth)}月`:"";
+  const period=x.longPeriod?esc(x.longPeriod):"";
+  const body=`${year}${month}${period}`;
+  return body?`⏳ ${body}予定`:"⏳ 長期";
+}
+
 function fresh(){
-  document.querySelector("form").reset();
+  $("dlg").querySelector("form").reset();
   $("id").value="";
-  $("delivery").value="郵送";
+  $("delivery").value=eventView?"手渡し":"郵送";
   statusOptions(false);
   $("title").textContent="新しい取引";
   $("registeredAt").textContent="";
   $("registeredAt").classList.add("hide");
   $("del").classList.add("hide");
   $("arc").classList.add("hide");
+  setMeetTimeError("");
+  syncLongScheduleUI();
   toggle();
   $("dlg").showModal();
 }
 function edit(id){
   const x=data.find(v=>v.id===id);
   if(!x)return;
-  document.querySelector("form").reset();
+  $("dlg").querySelector("form").reset();
   $("delivery").value=x.delivery||"郵送";
   statusOptions(false);
   fields.forEach(k=>{
@@ -368,6 +543,8 @@ function edit(id){
     if($(k).type==="checkbox")$(k).checked=!!v;
     else $(k).value=v??"";
   });
+  setMeetTimeError("");
+  syncLongScheduleUI();
   toggle();
   if(ss().includes(x.status))$("status").value=x.status;
   $("title").textContent="取引を編集";
@@ -385,13 +562,15 @@ $("closeHelp").onclick=()=>$("helpDlg").close();
 $("new").onclick=fresh;
 $("delivery").onchange=toggle;
 $("type").onchange=toggle;
-$("meetTime").addEventListener("blur",formatMeetTimeInput);
+$("longTerm").onchange=syncLongScheduleUI;
+$("meetTime").addEventListener("blur",()=>formatMeetTimeInput(false));
+$("meetTime").addEventListener("input",()=>setMeetTimeError(""));
 document.querySelectorAll(".ship-chip").forEach(btn=>{
   btn.onclick=()=>{$("shipping").value=btn.dataset.ship||""};
 });
 
 $("save").onclick=()=>{
-  if(!formatMeetTimeInput())return;
+  if(!formatMeetTimeInput(true))return;
   const o={};
   fields.forEach(k=>{
     const el=$(k);
@@ -412,7 +591,7 @@ $("save").onclick=()=>{
     // normalizeData([o]) compacts order to 0, so restore the existing slot.
     data[i].order=o.order;
   }else{
-    o.id=crypto.randomUUID();
+    o.id=newId();
     o.createdAt=now;
     o.updated=now;
     o.archived=false;
@@ -422,8 +601,7 @@ $("save").onclick=()=>{
     normalized.order=o.order;
     data.push(normalized);
   }
-  saveData();
-  $("dlg").close();
+  if(saveData())$("dlg").close();
 };
 
 $("arc").onclick=()=>{
@@ -436,15 +614,15 @@ $("arc").onclick=()=>{
     const orders=data.filter(v=>!v.archived&&v.id!==x.id).map(v=>v.order);
     x.order=orders.length?Math.max(...orders)+1:0;
   }
-  saveData();
-  $("dlg").close();
+  if(saveData())$("dlg").close();
 };
 $("del").onclick=()=>{
   const id=$("id").value;
   if(id&&confirm("この取引を削除しますか？")){
+    const previous=data;
     data=data.filter(x=>x.id!==id);
-    saveData();
-    $("dlg").close();
+    if(saveData())$("dlg").close();
+    else data=previous;
   }
 };
 $("bulkArchive").onclick=()=>{
@@ -455,12 +633,32 @@ $("bulkArchive").onclick=()=>{
   targets.forEach(x=>{x.archived=true;x.updated=now});
   saveData();
 };
+$("eventModeBtn").onclick=()=>{
+  eventView=!eventView;
+  longView=false;
+  archiveView=false;
+  reorderMode=false;
+  $("filter").value="active";
+  render();
+};
+
+$("longModeBtn").onclick=()=>{
+  longView=!longView;
+  eventView=false;
+  archiveView=false;
+  reorderMode=false;
+  $("filter").value="active";
+  render();
+};
+
 $("reorderBtn").onclick=()=>{
   reorderMode=!reorderMode;
   if(!reorderMode)saveVisibleOrder();
   render();
 };
 $("archives").onclick=()=>{
+  eventView=false;
+  longView=false;
   reorderMode=false;
   archiveView=!archiveView;
   render();
@@ -480,7 +678,7 @@ $("export").onclick=()=>{
   a.href=URL.createObjectURL(blob);
   a.download="torihiki-note.json";
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 };
 
 $("import").onchange=async e=>{
@@ -501,12 +699,28 @@ $("import").onchange=async e=>{
     }
 
     // Keep the current dataset in a separate browser key before replacement.
-    localStorage.setItem(IMPORT_BACKUP_KEY,JSON.stringify({
-      savedAt:new Date().toISOString(),
-      trades:data
-    }));
+    try{
+      localStorage.setItem(IMPORT_BACKUP_KEY,JSON.stringify({
+        savedAt:new Date().toISOString(),
+        trades:data
+      }));
+    }catch(err){
+      console.error(err);
+      alert("現在のデータの退避に失敗したため、読み込みを中止しました。");
+      e.target.value="";
+      return;
+    }
+
+    try{
+      localStorage.setItem(KEY,JSON.stringify(normalized));
+    }catch(err){
+      console.error(err);
+      alert("読み込んだデータを保存できませんでした。現在のデータは置き換えていません。");
+      e.target.value="";
+      return;
+    }
+
     data=normalized;
-    localStorage.setItem(KEY,JSON.stringify(data));
     render();
   }catch(err){
     alert("読み込めないファイルです。");
