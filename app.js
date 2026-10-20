@@ -513,7 +513,7 @@ function longScheduleText(x){
   const month=x.longMonth?`${esc(x.longMonth)}月`:"";
   const period=x.longPeriod?esc(x.longPeriod):"";
   const body=`${year}${month}${period}`;
-  return body?`⏳ ${body}予定`:"⏳ 長期";
+  return body?`📌${body}予定`:"📌 長期";
 }
 
 function fresh(){
