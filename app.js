@@ -286,7 +286,7 @@ function render(){
           </div>
           ${x.status==="完了"
             ? `<span class="event-done-label">✓ 済み</span>`
-            : `<button type="button" class="event-done-btn" data-id="${idAttr}">受け渡し済み</button>`}
+            : `<button type="button" class="event-done-btn" data-id="${idAttr}">完了にする</button>`}
         </div>
         <div class="event-meta">${handDetails}</div>
         <p>${esc(x.items||"取引内容未入力")}</p>
