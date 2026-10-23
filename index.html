@@ -9,7 +9,7 @@
   <link href="./favicon.png" rel="icon" type="image/png"/>
   <link href="./favicon.ico" rel="icon"/>
   <link href="./apple-touch-icon.png" rel="apple-touch-icon"/>
-  <link href="styles.css?v=0106p" rel="stylesheet"/>
+  <link href="styles.css?v=100" rel="stylesheet"/>
  </head>
  <body>
   <header>
@@ -39,7 +39,7 @@
       🎪
      </button>
      <button aria-label="長期表示" id="longModeBtn" title="長期表示" type="button">
-      ⏳
+      📌
      </button>
      <button id="reorderBtn" type="button">
       並び替え
@@ -71,6 +71,15 @@
     <button id="archives">
      Archive
     </button>
+   </div>
+   <div id="tagFilterWrap" class="tag-filter-wrap hide">
+    <button id="tagFilterToggle" class="tag-filter-toggle" type="button" aria-expanded="false">
+     🏷️ タグで絞り込み
+    </button>
+    <div id="tagFilterPanel" class="tag-filter-panel hide">
+     <div id="tagFilterChips" class="tag-filter-chips"></div>
+     <button id="clearTagFilter" class="tag-filter-clear hide" type="button">絞り込み解除</button>
+    </div>
    </div>
    <div id="cards">
    </div>
@@ -310,6 +319,18 @@
      <input id="addressExchanged" type="checkbox"/>
      住所交換済み
     </label>
+    <div class="tag-editor-wrap">
+     <div class="tag-editor-head">
+      <span>タグ</span>
+      <button id="addTagBtn" type="button">＋ タグ追加</button>
+     </div>
+     <div id="tagEditor"></div>
+     <small class="tag-help">作品名やジャンルなど、好きな分類を複数付けられます。</small>
+     <div id="recentTagsWrap" class="recent-tags-wrap hide">
+      <div class="recent-tags-title">最近使ったタグ</div>
+      <div id="recentTags" class="recent-tags"></div>
+     </div>
+    </div>
     <label>
      メモ
      <textarea id="memo" rows="4"></textarea>
@@ -343,7 +364,7 @@
     <input accept=".json" id="import" type="file"/>
    </label>
   </footer>
-  <script src="app.js?v=0106p">
+  <script src="app.js?v=100">
   </script>
  </body>
 </html>
