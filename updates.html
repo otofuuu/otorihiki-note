@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f3ec">
+  <title>オトリヒキノート｜更新履歴</title>
+  <style>
+    :root {
+      --up-bg:#f7f3ec; --up-surface:#fffdf9; --up-surface-2:#f1ece3;
+      --up-text:#25241f; --up-muted:#6f6a60; --up-line:#ddd5c8;
+      --up-accent:#2e65c7; --up-accent-soft:#edf3ff; --up-dark:#272720;
+      --up-add-bg:#eef8f0; --up-add-text:#2f6b3b;
+      --up-improve-bg:#eef3ff; --up-improve-text:#315ca8;
+      --up-fix-bg:#fff3e6; --up-fix-text:#9a5b18;
+      --up-shadow:0 10px 28px rgba(55,45,25,.07); --up-radius:18px;
+    }
+    *{box-sizing:border-box}
+    body.up-page{margin:0;background:var(--up-bg);color:var(--up-text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;line-height:1.75;-webkit-text-size-adjust:100%}
+    .up-shell{width:min(860px,calc(100% - 28px));margin:0 auto;padding:28px 0 52px}
+    .up-hero{padding:32px 28px 28px;background:var(--up-surface);border:1px solid var(--up-line);border-radius:24px;box-shadow:var(--up-shadow);text-align:center}
+    .up-kicker{margin:0 0 6px;color:var(--up-muted);font-size:.83rem;font-weight:700;letter-spacing:.08em}
+    .up-title{margin:0;font-size:clamp(2rem,8vw,3rem);line-height:1.15;letter-spacing:-.03em}
+    .up-lead{max-width:620px;margin:14px auto 0;color:var(--up-muted);font-size:.96rem}
+    .up-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin-top:20px}
+    .up-button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border-radius:14px;text-decoration:none;font-weight:800}
+    .up-button--primary{background:var(--up-dark);color:#fff}
+    .up-button--sub{background:var(--up-accent-soft);color:var(--up-accent);border:1px solid #d7e4ff}
+    .up-section{margin-top:28px}
+    .up-section-title{margin:0 0 12px;font-size:1.28rem;line-height:1.35}
+    .up-history{display:grid;gap:12px}
+    .up-entry{padding:18px;background:var(--up-surface);border:1px solid var(--up-line);border-radius:var(--up-radius)}
+    .up-entry-head{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;margin-bottom:10px}
+    .up-date{font-weight:800;font-size:1rem}
+    .up-version{color:var(--up-muted);font-size:.84rem;font-weight:700}
+    .up-list{margin:0;padding-left:1.25rem;color:var(--up-muted);font-size:.94rem}
+    .up-list li + li{margin-top:7px}
+    .up-label{display:inline-flex;align-items:center;min-height:26px;padding:2px 9px;margin-right:5px;border-radius:999px;font-size:.76rem;font-weight:800;vertical-align:middle;white-space:nowrap}
+    .up-label--add{background:var(--up-add-bg);color:var(--up-add-text)}
+    .up-label--improve{background:var(--up-improve-bg);color:var(--up-improve-text)}
+    .up-label--fix{background:var(--up-fix-bg);color:var(--up-fix-text)}
+    .up-note{padding:16px 18px;background:var(--up-surface-2);border-radius:var(--up-radius);color:var(--up-muted);font-size:.9rem}
+    .up-note p{margin:0}
+    .up-footer{margin-top:28px;color:var(--up-muted);text-align:center;font-size:.8rem}
+    @media (max-width:640px){.up-shell{width:min(100% - 20px,860px);padding-top:14px}.up-hero{padding:26px 18px 24px;border-radius:20px}.up-entry{padding:15px}.up-button{width:100%}}
+  </style>
+</head>
+<body class="up-page">
+  <main class="up-shell">
+    <header class="up-hero">
+      <p class="up-kicker">UPDATE HISTORY</p>
+      <h1 class="up-title">更新履歴📝</h1>
+      <p class="up-lead">オトリヒキノートの追加機能・改善・修正内容をまとめています。</p>
+      <div class="up-actions">
+        <a class="up-button up-button--primary" href="./index.html">オトリヒキノートを使う</a>
+        <a class="up-button up-button--sub" href="./README.html">使い方を見る</a>
+      </div>
+    </header>
+
+    <section class="up-section" aria-labelledby="up-history-title">
+      <h2 class="up-section-title" id="up-history-title">更新一覧</h2>
+      <div class="up-history">
+
+        <!--
+          新しい更新は、この up-entry ブロックをコピーして
+          「更新一覧」の一番上へ追加してください。
+
+          追加 → up-label--add
+          改善 → up-label--improve
+          修正 → up-label--fix
+        -->
+
+        <article class="up-entry">
+          <div class="up-entry-head">
+            <span class="up-date">2026年10月26日</span>
+            <span class="up-version">例：v1.1.0</span>
+          </div>
+          <ul class="up-list">
+            <li><span class="up-label up-label--add">追加</span>新しい機能を追加しました。</li>
+            <li><span class="up-label up-label--improve">改善</span>画面表示や操作性を改善しました。</li>
+            <li><span class="up-label up-label--fix">修正</span>一部の不具合を修正しました。</li>
+          </ul>
+        </article>
+
+        <article class="up-entry">
+          <div class="up-entry-head">
+            <span class="up-date">2026年10月○日</span>
+            <span class="up-version">例：v1.0.0</span>
+          </div>
+          <ul class="up-list">
+            <li><span class="up-label up-label--add">追加</span>オトリヒキノートを公開しました。</li>
+          </ul>
+        </article>
+
+      </div>
+    </section>
+
+    <section class="up-section">
+      <div class="up-note">
+        <p>※ 小さな文言調整など、利用に影響しない変更は掲載しない場合があります。</p>
+      </div>
+    </section>
+
+    <footer class="up-footer">オトリヒキノート</footer>
+  </main>
+</body>
+</html>
